@@ -1,0 +1,56 @@
+const CACHE_NAME = "fitbody-cache-v1";
+const urlsToCache = [
+  "/index.html",
+  "/style.css",
+  "/manifest.json",
+  "/service.js",
+  "/images/goblet-squat.jpg",
+  "/images/situp.jpg",
+  "/images/pushup.jpg",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png"
+];
+
+// Install: cache all files
+self.addEventListener("install", event => {
+  console.log("[Service Worker] Installing...");
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      console.log("[Service Worker] Caching app files");
+      return cache.addAll(urlsToCache);
+    })
+  );
+  self.skipWaiting();
+});
+
+// Activate: remove old caches
+self.addEventListener("activate", event => {
+  console.log("[Service Worker] Activating...");
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            console.log("[Service Worker] Deleting old cache:", key);
+            return caches.delete(key);
+          }
+        })
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+// Fetch: serve cached files if available
+self.addEventListener("fetch", event => {
+  event.respondWith(
+    caches.match(event.request).then(cachedResponse => {
+      return cachedResponse || fetch(event.request).catch(() => {
+        // Offline fallback
+        if (event.request.mode === "navigate") {
+          return caches.match("/index.html");
+        }
+      });
+    })
+  );
+});
